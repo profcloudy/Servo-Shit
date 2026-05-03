@@ -1,0 +1,21 @@
+#include <Servo.h>
+
+Servo base, shoulder, elbow, hand; // Base,Shoulder,Elbow, Hand
+
+
+void setup() {
+  base.attach(3); // Dapat same tong name na "base" dito sa taas 
+  shoulder.attach(4);
+  elbow.attach(5);
+  hand.attach(2);
+}
+
+void loop() {
+  // Read knobs from A0-A3 and move servos on on PWM
+  base.write(map(analogRead(A0), 0, 1023, 0, 180));
+  shoulder.write(map(analogRead(A1), 0, 1023, 0, 180));
+  elbow.write(map(analogRead(A2), 0, 1023, 0, 180));
+  hand.write(map(analogRead(A3), 0, 1023, 0, 180));
+  
+  delay(15) ; // Smooths out the motion
+}
