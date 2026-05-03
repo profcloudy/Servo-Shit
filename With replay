@@ -1,0 +1,84 @@
+#include <Servo.h>
+
+Servo base, shoulder, elbow, hand;
+
+const int buttonPin = 6;     // Back to Digital Pin 6
+const int maxSteps = 100; 
+int savedSteps[maxSteps][4]; 
+int stepCounter = 0;
+bool isPlaying = false;
+
+unsigned long buttonPressTime = 0;
+bool buttonActive = false;
+
+void setup() {
+  shoulder.attach(4);
+  elbow.attach(5);
+  hand.attach(3);
+  base.attach(2);
+
+  pinMode(buttonPin, INPUT_PULLUP);
+  Serial.begin(9600); // Re-enabled Serial since we aren't using Pin 1
+  Serial.println("Robot Arm Ready. Click to Record, Hold to Play.");
+}
+
+void loop() {
+  int buttonState = digitalRead(buttonPin);
+
+  // 1. Detect Button Press
+  if (buttonState == LOW && !buttonActive) {
+    buttonActive = true;
+    buttonPressTime = millis();
+  }
+
+  // 2. Detect Button Release
+  if (buttonState == HIGH && buttonActive) {
+    long duration = millis() - buttonPressTime;
+    buttonActive = false;
+
+    if (duration > 2000) {
+      // LONG PRESS: Start/Stop Playback
+      isPlaying = !isPlaying;
+      if (isPlaying) Serial.println(">>> PLAYING SEQUENCE");
+      else Serial.println(">>> STOPPED");
+    } 
+    else if (duration > 50) {
+      // SHORT CLICK: Save Pose
+      if (!isPlaying && stepCounter < maxSteps) {
+        savedSteps[stepCounter][0] = map(analogRead(A0), 0, 1023, 0, 180);
+        savedSteps[stepCounter][1] = map(analogRead(A1), 0, 1023, 0, 180);
+        savedSteps[stepCounter][2] = map(analogRead(A2), 0, 1023, 0, 180);
+        savedSteps[stepCounter][3] = map(analogRead(A3), 0, 1023, 0, 180);
+        
+        Serial.print("Step Recorded: ");
+        Serial.println(stepCounter);
+        stepCounter++;
+      }
+    }
+  }
+
+  // 3. Execution Logic
+  if (!isPlaying) {
+    // Manual Control Mode
+    base.write(map(analogRead(A0), 0, 1023, 0, 180));
+    shoulder.write(map(analogRead(A1), 0, 1023, 0, 180));
+    elbow.write(map(analogRead(A2), 0, 1023, 0, 180));
+    hand.write(map(analogRead(A3), 0, 1023, 0, 180));
+  } else {
+    // Playback Mode
+    for (int i = 0; i < stepCounter; i++) {
+      base.write(savedSteps[i][0]);
+      shoulder.write(savedSteps[i][1]);
+      elbow.write(savedSteps[i][2]);
+      hand.write(savedSteps[i][3]);
+      delay(800); // Adjust this for speed
+      
+      // Safety: Stop if button is pressed mid-sequence
+      if (digitalRead(buttonPin) == LOW) {
+        isPlaying = false;
+        break;
+      }
+    }
+  }
+  delay(15); 
+}
